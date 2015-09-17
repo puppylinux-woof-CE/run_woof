@@ -1,0 +1,83 @@
+#!/bin/sh
+
+ISO_MNT="$(mktemp -d -u -p /mnt)"
+SFS_MNT="$(mktemp -d -u -p /mnt)"
+DEVX_MNT="$(mktemp -d -u -p /mnt)"
+TMP_MNT="$(mktemp -d -u -p /mnt)"
+AUFS_MNT="$(mktemp -d -u -p /mnt)"
+SHARE_MNT="$AUFS_MNT/root/share"
+
+TMP_SIZE=20%
+
+cond_unmount() {
+	mountpoint -q $1 && umount -l $1
+}
+
+cond_unmount_del() {
+	mountpoint -q $1
+	if [ 0 -eq $? ]
+	then
+		umount -l $1
+		rmdir $1 2>/dev/null
+	fi
+}
+
+cleanup() {
+	cond_unmount_del $SHARE_MNT
+	cond_unmount $AUFS_MNT/tmp
+	cond_unmount $AUFS_MNT/sys
+	cond_unmount $AUFS_MNT/proc
+	cond_unmount $AUFS_MNT/dev
+	cond_unmount_del $AUFS_MNT
+	cond_unmount_del $TMP_MNT
+	cond_unmount_del $DEVX_MNT
+	cond_unmount_del $SFS_MNT
+	cond_unmount_del $ISO_MNT
+}
+
+usage() {
+	echo "Usage: $0 ISO SFS SHARE" >&2
+	exit 1
+}
+
+[ $# -ne 3 ] && usage
+([ ! -f "$1" ] || [ ! -f "$2" ] || [ ! -d "$3" ]) && usage
+
+trap cleanup EXIT
+trap cleanup TERM
+trap cleanup INT
+
+mkdir $ISO_MNT
+mount -t iso9660 -o loop,ro "$1" $ISO_MNT || exit 1
+
+mkdir $SFS_MNT
+mount -t squashfs -o loop,ro $ISO_MNT/puppy_*.sfs $SFS_MNT || exit 1
+
+mkdir $DEVX_MNT
+mount -t squashfs -o loop,ro "$2" $DEVX_MNT || exit 1
+
+mkdir $TMP_MNT
+mount -t tmpfs -o size=$TMP_SIZE rw $TMP_MNT || exit 1
+
+mkdir $AUFS_MNT
+mount -t aufs -o br=$TMP_MNT=rw:$DEVX_MNT=ro:$SFS_MNT=ro none $AUFS_MNT
+
+mount -R /dev $AUFS_MNT/dev
+mount -B /proc $AUFS_MNT/proc
+mkdir -p $AUFS_MNT/sys
+mount -B /sys $AUFS_MNT/sys
+
+[ ! -d "$3/tmp" ] && mkdir "$3/tmp"
+mount -B "$3/tmp" $AUFS_MNT/tmp
+
+mkdir $SHARE_MNT
+mount -B "$3" $SHARE_MNT
+
+cp -f /etc/resolv.conf $AUFS_MNT/etc/
+cp -f $XAUTHORITY $AUFS_MNT/root/.Xauthority
+
+LC_ALL=C \
+LANG=C \
+HOME=/root \
+XAUTHORITY=/root/.Xauthority \
+chroot $AUFS_MNT /bin/bash -i
