@@ -76,11 +76,11 @@ mount -B "$3" $SHARE_MNT
 cp -f /etc/resolv.conf $AUFS_MNT/etc/
 cp -f $XAUTHORITY $AUFS_MNT/root/.Xauthority
 
-chroot $AUFS_MNT \
-       gdk-pixbuf-query-loaders > "$AUFS_MNT/etc/gtk-2.0/gdk-pixbuf.loaders"
+linux32 chroot $AUFS_MNT \
+        gdk-pixbuf-query-loaders > "$AUFS_MNT/etc/gtk-2.0/gdk-pixbuf.loaders"
 
 LC_ALL=C \
 LANG=C \
 HOME=/root \
 XAUTHORITY=/root/.Xauthority \
-chroot $AUFS_MNT /bin/bash -i
+linux32 chroot $AUFS_MNT /bin/bash -i
