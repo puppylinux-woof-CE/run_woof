@@ -31,6 +31,8 @@ cleanup() {
 	cond_unmount $AUFS_MNT/tmp
 	cond_unmount $AUFS_MNT/sys
 	cond_unmount $AUFS_MNT/proc
+	cond_unmount $AUFS_MNT/dev/shm
+	cond_unmount $AUFS_MNT/dev/pts
 	cond_unmount $AUFS_MNT/dev
 	cond_unmount_del $AUFS_MNT
 	cond_unmount_del $TMP_MNT
@@ -72,7 +74,19 @@ mount -t tmpfs -o size=$TMP_SIZE rw $TMP_MNT || exit 1
 mkdir $AUFS_MNT
 mount -t aufs -o br=$TMP_MNT=rw:$DEVX_MNT=ro:$SFS_MNT=ro none $AUFS_MNT
 
-mount -R /dev $AUFS_MNT/dev
+# some versions of umount will unmount bind mounts recursively,
+# which means that /dev/pts and /dev/shm get unmounted in the host system
+#mount -R /dev $AUFS_MNT/dev
+
+# different approach borrowed from Linux From Scratch
+mount -B /dev $AUFS_MNT/dev
+mount -t devpts devpts $AUFS_MNT/dev/pts
+if [ -h /dev/shm ]; then
+  rm -f $AUFS_MNT/dev/shm
+  mkdir $AUFS_MNT/dev/shm
+fi
+mount -t tmpfs shm $AUFS_MNT/dev/shm
+
 mount -B /proc $AUFS_MNT/proc
 mkdir -p $AUFS_MNT/sys
 mount -B /sys $AUFS_MNT/sys
