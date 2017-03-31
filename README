@@ -21,11 +21,28 @@ Usage
 =====
 
 To use run_woof:
-  - Download your Puppy version of choice and its matching 'devx' module
-  - Obtain the woof-CE codebase
-  - Run run_woof; pass the paths to the ISO image, 'devx' module and woof-CE
 
-The woof-CE directory will be mounted at /root/share.
+  - If you are running Puppy Linux and have the 'devx' module loaded,
+    run_woof will offer to use them, otherwise download your
+    Puppy version of choice and its matching 'devx' module.
+
+  - If you already have a woof-CE git repo, put run_woof in the same location,
+    otherwise run_woof will offer to clone the woof-CE git repo for you.
+
+  - run_woof is a ROX AppDir, if you use ROX as your file manager, just click
+    on it to start it, otherwise you can click on the AppRun script inside the
+    run_woof directory or run the ./run_woof_helper script in a terminal.  The
+    original run_woof script can also be used directly, passing the paths to
+    the ISO image, 'devx' module and directory with woof-CE
+
+The directory passed to the run_woof script, or the directory where the
+run_woof AppDir is located will be mounted at /root/share inside of run_woof.
+
+The first time run_woof is started a run_woof.conf file will be created inside
+of the run_woof AppDir with default settings based on the host operating
+system.  These settings can be edited by clicking on "Configure run_woof" or if
+the host operating system does not have gtkdialog, editing the run_woof.conf
+file in a text editor.
 
 Credits and Legal Information
 =============================

@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# LAYER_TYPE is defined in run_woof.conf
+[ -f "./run_woof.conf" ] && . "./run_woof.conf"
+
 # not made if using puppy sfs
 #ISO_MNT="$(mktemp -d -u -p /mnt)"
 
@@ -72,7 +75,14 @@ mkdir $TMP_MNT
 mount -t tmpfs -o size=$TMP_SIZE rw $TMP_MNT || exit 1
 
 mkdir $AUFS_MNT
-mount -t aufs -o br=$TMP_MNT=rw:$DEVX_MNT=ro:$SFS_MNT=ro none $AUFS_MNT
+if [ "$LAYER_TYPE" = 'overlay' ]; then
+	mkdir "${TMP_MNT}/tmp"
+	mkdir "${TMP_MNT}/work"
+	mount -t overlay overlay -olowerdir=$SFS_MNT:$DEVX_MNT,\
+upperdir="${TMP_MNT}/tmp",workdir="${TMP_MNT}/work" $AUFS_MNT
+else
+	mount -t aufs -o br=$TMP_MNT=rw:$DEVX_MNT=ro:$SFS_MNT=ro none $AUFS_MNT
+fi
 
 # some versions of umount will unmount bind mounts recursively,
 # which means that /dev/pts and /dev/shm get unmounted in the host system
@@ -99,6 +109,8 @@ mount -R "$3" $SHARE_MNT
 
 cp -f /etc/resolv.conf $AUFS_MNT/etc/
 [ -e "$XAUTHORITY" ] && cp -f $XAUTHORITY $AUFS_MNT/root/.Xauthority
+[ -f "$SHARE_MNT/run_woof/bashrc" ] && ln -sf share/run_woof/bashrc $AUFS_MNT/root/.bashrc
+[ -d "$SHARE_MNT/run_woof" ] && touch "$SHARE_MNT/run_woof/bash_history" ; ln -s share/run_woof/bash_history $AUFS_MNT/root/.history
 
 if [ "${2#*64_}" != "$2" ]; then
 	chroot $AUFS_MNT \
