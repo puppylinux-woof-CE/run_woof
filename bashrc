@@ -7,7 +7,11 @@ PS1="run_woof\\$ "
 cd /root/share
 
 # CHECK_FOR_UPDATES and MERGE_UPDATES are defined in run_woof.conf
-[ -e run_woof/run_woof.conf ] && . run_woof/run_woof.conf
+if [ -e run_woof/run_woof.conf ]; then
+	. run_woof/run_woof.conf
+elif [ -e run_woof-master/run_woof.conf ]; then
+	. run_woof-master/run_woof.conf
+fi
 
 if [ ! -d woof-CE ]; then
 

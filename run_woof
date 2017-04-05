@@ -111,8 +111,16 @@ mount -R "$3" $SHARE_MNT
 
 cp -f /etc/resolv.conf $AUFS_MNT/etc/
 [ -e "$XAUTHORITY" ] && cp -f $XAUTHORITY $AUFS_MNT/root/.Xauthority
-[ -f "$SHARE_MNT/run_woof/bashrc" ] && ln -sf share/run_woof/bashrc $AUFS_MNT/root/.bashrc
-[ -d "$SHARE_MNT/run_woof" ] && touch "$SHARE_MNT/run_woof/bash_history" ; ln -s share/run_woof/bash_history $AUFS_MNT/root/.history
+if [ -f "$SHARE_MNT/run_woof/bashrc" ]; then
+	ln -sf share/run_woof/bashrc $AUFS_MNT/root/.bashrc
+elif [ -f "$SHARE_MNT/run_woof-master/bashrc" ]; then
+	ln -sf share/run_woof-master/bashrc $AUFS_MNT/root/.bashrc
+fi
+if [ -d "$SHARE_MNT/run_woof" ]; then
+	touch "$SHARE_MNT/run_woof/bash_history" ; ln -s share/run_woof/bash_history $AUFS_MNT/root/.history
+elif [ -d "$SHARE_MNT/run_woof-master" ]; then
+	touch "$SHARE_MNT/run_woof-master/bash_history" ; ln -s share/run_woof-master/bash_history $AUFS_MNT/root/.history
+fi
 
 if [ "${2#*64_}" != "$2" ]; then
 	chroot $AUFS_MNT \

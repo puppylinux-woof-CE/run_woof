@@ -33,7 +33,7 @@ if [ "$LAYER_TYPE" = '' ]; then
 fi
 
 SCRIPT_PATH="`realpath $0`"
-APPDIR_PATH="${SCRIPT_PATH%/run_woof/run_woof_helper}"
+APPDIR_PATH="${SCRIPT_PATH%/*/run_woof_helper}"
 
 STAT_OUTPUT="`stat -f -c '%T' "$APPDIR_PATH"`"
 if [ "${STAT_OUTPUT#ext}" = "$STAT_OUTPUT" ]; then
