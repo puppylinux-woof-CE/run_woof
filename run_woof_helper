@@ -36,7 +36,11 @@ SCRIPT_PATH="`realpath $0`"
 APPDIR_PATH="${SCRIPT_PATH%/*/run_woof_helper}"
 
 STAT_OUTPUT="`stat -f -c '%T' "$APPDIR_PATH"`"
-if [ "${STAT_OUTPUT#ext}" = "$STAT_OUTPUT" ]; then
+if [ "${STAT_OUTPUT#UNKNOWN}" != "$STAT_OUTPUT" ]; then
+	echo "Unable to determine file-system type."
+	echo "Output of stat -f -c '%T' $APPDIR_PATH"
+	echo "$STAT_OUTPUT"
+elif [ "${STAT_OUTPUT#ext}" = "$STAT_OUTPUT" ]; then
 	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' ]; then
 		MAIN_DIALOG=''
 		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'<window title="run_woof">
