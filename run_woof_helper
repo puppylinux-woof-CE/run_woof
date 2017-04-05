@@ -69,15 +69,18 @@ fi
 
 if [ -e /etc/rc.d/PUPSTATE ]; then
 	. /etc/rc.d/PUPSTATE
-	RUNNING_SFS="/initrd${PUP_HOME}${PUPSFS#*,*,}"
+
+	SFS_NAME="${PUPSFS##*/}"
+#	echo "SFS_NAME = $SFS_NAME"
+
+	# try to use sfs in RAM
+	RUNNING_SFS="/initrd/mnt/tmpfs/$SFS_NAME"
+	# otherwise look in PUP_HOME
+	[ ! -e "$RUNNING_SFS" ] && RUNNING_SFS="/initrd${PUP_HOME}${PUPSFS#*,*,}"
 	if [ -e "$RUNNING_SFS" ]; then
 #		echo "RUNNING_SFS = $RUNNING_SFS"
-		SFS_NAME="${RUNNING_SFS##*/}"
-#		echo "SFS_NAME = $SFS_NAME"
-		SFS_DIR="${RUNNING_SFS%/$SFS_NAME}"
-#		echo "SFS_DIR = $SFS_DIR"
 
-		MATCHING_DEVX="${SFS_DIR}/devx${SFS_NAME#puppy}"
+		MATCHING_DEVX="/initrd${PUP_HOME}${PSUBDIR}/devx${SFS_NAME#puppy}"
 		if [ ! -e "$MATCHING_DEVX" ]; then
 			MATCHING_DEVX="/initrd${PUP_HOME}/devx${SFS_NAME#puppy}"
 			if [ ! -e "$MATCHING_DEVX" ]; then
