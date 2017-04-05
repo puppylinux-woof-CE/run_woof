@@ -3,6 +3,8 @@
 # LAYER_TYPE is defined in run_woof.conf
 [ -f "./run_woof.conf" ] && . "./run_woof.conf"
 
+[ "`whoami`" != "root" ] && exec sudo -A ${0} ${@}
+
 # not made if using puppy sfs
 #ISO_MNT="$(mktemp -d -u -p /mnt)"
 
