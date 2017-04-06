@@ -1,0 +1,374 @@
+#!/bin/sh
+
+# SELECTED_DEVX_PATH, LAYER_TYPE, TERMINAL_COMMAND and GTKDIALOG_COMMAND
+# are defined in run_woof.conf
+[ ! -f ./run_woof.conf ] && ./edit-config --new
+. ./run_woof.conf
+
+if [ "$LAYER_TYPE" = '' ]; then
+	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' ]; then
+		MAIN_DIALOG=''
+		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'<window title="run_woof">
+'
+		MAIN_DIALOG=${MAIN_DIALOG}'<vbox>
+	<text>
+<label>run_woof needs either aufs or overlayfs.</label>
+	</text>
+	<hbox>
+		<button ok></button>
+		<button cancel></button>
+	</hbox>
+</vbox>'
+		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'
+</window>'
+
+#		echo "$MAIN_DIALOG"
+		export MAIN_DIALOG
+		GTKDIALOG_RESULT="`$GTKDIALOG_COMMAND --program=MAIN_DIALOG`"
+		exit
+	else
+		echo "Error: run_woof needs either aufs or overlayfs."
+		exit
+	fi
+fi
+
+SCRIPT_PATH="`realpath $0`"
+APPDIR_PATH="${SCRIPT_PATH%/*/run_woof_helper}"
+
+STAT_OUTPUT="`stat -f -c '%T' "$APPDIR_PATH"`"
+if [ "${STAT_OUTPUT#UNKNOWN}" != "$STAT_OUTPUT" ]; then
+	echo "Unable to determine file-system type."
+	echo "Output of stat -f -c '%T' $APPDIR_PATH"
+	echo "$STAT_OUTPUT"
+elif [ "${STAT_OUTPUT#ext}" = "$STAT_OUTPUT" ]; then
+	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' ]; then
+		MAIN_DIALOG=''
+		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'<window title="run_woof">
+'
+		MAIN_DIALOG=${MAIN_DIALOG}'<vbox>
+	<text>
+<label>run_woof needs to be in a Linux type (ext2/3/4) filesystem.</label>
+	</text>
+	<hbox>
+		<button ok></button>
+		<button cancel></button>
+	</hbox>
+</vbox>'
+		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'
+</window>'
+
+#		echo "$MAIN_DIALOG"
+		export MAIN_DIALOG
+		GTKDIALOG_RESULT="`$GTKDIALOG_COMMAND --program=MAIN_DIALOG`"
+		exit
+	else
+		echo "Error: run_woof needs to be in a Linux type (ext2/3/4) filesystem."
+		exit
+	fi
+fi
+
+if [ -e /etc/rc.d/PUPSTATE ]; then
+	. /etc/rc.d/PUPSTATE
+
+	SFS_NAME="${PUPSFS##*/}"
+#	echo "SFS_NAME = $SFS_NAME"
+
+	# try to use sfs in RAM
+	RUNNING_SFS="/initrd/mnt/tmpfs/$SFS_NAME"
+	# otherwise look in PUP_HOME
+	[ ! -e "$RUNNING_SFS" ] && RUNNING_SFS="/initrd${PUP_HOME}${PUPSFS#*,*,}"
+	if [ -e "$RUNNING_SFS" ]; then
+#		echo "RUNNING_SFS = $RUNNING_SFS"
+
+		MATCHING_DEVX="/initrd${PUP_HOME}${PSUBDIR}/devx${SFS_NAME#puppy}"
+		if [ ! -e "$MATCHING_DEVX" ]; then
+			MATCHING_DEVX="/initrd${PUP_HOME}/devx${SFS_NAME#puppy}"
+			if [ ! -e "$MATCHING_DEVX" ]; then
+				MATCHING_DEVX="${APPDIR_PATH}/devx${SFS_NAME#puppy}"
+				if [ ! -e "$MATCHING_DEVX" ]; then
+					MATCHING_DEVX=''
+				fi
+			fi
+		fi
+	else
+		RUNNING_SFS=''
+	fi
+fi
+
+#echo "MATCHING_DEVX = $MATCHING_DEVX"
+
+COUNTER=1
+if [ "$MATCHING_DEVX" != '' ]; then
+	LIST_ITEMS="1 $RUNNING_SFS $MATCHING_DEVX"
+	SHORT_LIST_ITEMS="1 ${RUNNING_SFS##*/}"
+	COUNTER=2
+fi
+
+find_devx_matches()
+{
+	for ONE_DEVX in ${1}/devx*.sfs
+	do
+		if [ "$ONE_DEVX" = "${1}/devx*" ]; then
+			break
+		fi
+
+		if [ "$ONE_DEVX" = "$MATCHING_DEVX" ]; then
+			continue
+		fi
+
+#		echo "ONE_DEVX = $ONE_DEVX"
+
+#		echo "${ONE_DEVX#${1}/}"
+		DEVX_NAME="`expr match "${ONE_DEVX#${1}/}" 'devx_\([[:alnum:]]*\)'`"
+#		echo "DEVX_NAME = $DEVX_NAME"
+
+		DEVX_VERSION="`expr match "${ONE_DEVX#${1}/}" "devx_$DEVX_NAME.\([[:digit:]\.]*\)\."`"
+#		echo "DEVX_VERSION = $DEVX_VERSION"
+
+		ONE_ISO="`ls "${1}/${DEVX_NAME}-${DEVX_VERSION}"*.iso 2> /dev/null`"
+		if [ -e "$ONE_ISO" ]; then
+#			echo "ONE_ISO = $ONE_ISO"
+			LIST_ITEMS="${LIST_ITEMS}\n$COUNTER $ONE_ISO $ONE_DEVX"
+			SHORT_LIST_ITEMS="${SHORT_LIST_ITEMS} $COUNTER ${ONE_ISO##*/}"
+			COUNTER=$((COUNTER+1))
+		else
+			ONE_ISO=''
+		fi
+
+		ONE_SFS="`ls "${1}/puppy_${DEVX_NAME}_${DEVX_VERSION}"*.sfs 2> /dev/null`"
+		if [ -e "$ONE_SFS" ]; then
+#			echo "ONE_SFS = $ONE_SFS"
+			LIST_ITEMS="${LIST_ITEMS}\n$COUNTER $ONE_SFS $ONE_DEVX"
+			SHORT_LIST_ITEMS="${SHORT_LIST_ITEMS} $COUNTER ${ONE_SFS##*/}"
+			COUNTER=$((COUNTER+1))
+		else
+			ONE_SFS=''
+		fi
+	done
+}
+
+find_devx_matches "$APPDIR_PATH"
+[ "$SELECTED_DEVX_PATH" != '' ] && find_devx_matches "$SELECTED_DEVX_PATH"
+
+LIST_ITEMS="${LIST_ITEMS}\n$COUNTER other"
+SHORT_LIST_ITEMS="${SHORT_LIST_ITEMS} $COUNTER other..."
+
+## bash echo needs -e, dash echo prints the -e, use /bin/echo
+#/bin/echo -e "$LIST_ITEMS"
+#echo "$SHORT_LIST_ITEMS"
+
+select_devx()
+{
+	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' ]; then
+		MAIN_DIALOG=''
+		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'<window title="run_woof">
+'
+		MAIN_DIALOG=${MAIN_DIALOG}'<vbox>
+	<frame Select which version of Puppy to use with run_woof>
+'
+		for ONE_TOKEN in $SHORT_LIST_ITEMS
+		do
+			if [ "`expr match $ONE_TOKEN '\([[:digit:]]*\)'`" = "$ONE_TOKEN" ]; then
+#				echo -n "($ONE_TOKEN) "
+				MAIN_DIALOG=${MAIN_DIALOG}"
+		<radiobutton>
+			<variable>RADIOBUTTON${ONE_TOKEN}</variable>"
+			else
+#				echo "$ONE_TOKEN"
+				MAIN_DIALOG=${MAIN_DIALOG}"
+			<label>${ONE_TOKEN}</label>
+		</radiobutton>
+"
+			fi
+		done
+		if [ "$SHORT_LIST_ITEMS" = '' ]; then
+			MAIN_DIALOG=${MAIN_DIALOG}'
+			<text><label>No devx found.</label></text>'
+		fi
+		MAIN_DIALOG=${MAIN_DIALOG}'
+	</frame>
+	<hbox>
+		<button>
+			<input file icon="gtk-preferences"></input>
+			<label>Configure run_woof</label>
+			<action>EXIT:edit-config</action>
+		</button>
+		<button ok></button>
+		<button cancel></button>
+	</hbox>
+</vbox>'
+		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'
+</window>'
+
+#		echo "$MAIN_DIALOG"
+		export MAIN_DIALOG
+		GTKDIALOG_RESULT="`$GTKDIALOG_COMMAND --program=MAIN_DIALOG`"
+
+#		echo "$GTKDIALOG_RESULT"
+		for ONE_VAR in $GTKDIALOG_RESULT
+		do
+			if [ "${ONE_VAR%\"true\"}" != "$ONE_VAR" ]; then
+				SELECTION="`expr match "$ONE_VAR" 'RADIOBUTTON\([[:digit:]]*\)'`"
+			elif [ "${ONE_VAR#EXIT}" != "$ONE_VAR" ]; then
+				if [ "${ONE_VAR%\"edit-config\"}" != "$ONE_VAR" ]; then
+					exec ./edit-config
+				elif [ "${ONE_VAR%\"OK\"}" = "$ONE_VAR" ]; then
+					exit
+				fi
+			fi
+		done
+
+#	elif [ `false` ]; then
+	elif [ "`which dialog`" != '' ]; then
+		exec 3>&1
+		SELECTION=$(dialog --menu "Select which version of Puppy to use with run_woof" \
+		17 60 10 $SHORT_LIST_ITEMS \
+		2>&1 1>&3)
+		exec 3>&-
+	else
+		echo
+		for ONE_TOKEN in $SHORT_LIST_ITEMS
+		do
+			if [ "`expr match $ONE_TOKEN '\([[:digit:]]*\)'`" = "$ONE_TOKEN" ]; then
+				echo -n "($ONE_TOKEN) "
+			else
+				echo "$ONE_TOKEN"
+			fi
+		done
+		echo "Enter number for selection and press <Enter>"
+		read SELECTION
+	fi
+}
+
+select_devx
+#echo $SELECTION
+
+[ "$SELECTION" = '' ] && exit
+
+select_dirpath()
+{
+	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' ]; then
+		MAIN_DIALOG=''
+		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'<window title="run_woof">
+'
+		MAIN_DIALOG=${MAIN_DIALOG}'<vbox>
+	<frame Select a Directory>
+		<hbox>
+			<entry accept="directory">
+				<variable>FILE_DIRECTORY</variable>
+			</entry>
+			<button>
+				<input file stock="gtk-open"></input>
+				<variable>FILE_BROWSE_DIRECTORY</variable>
+				<action type="fileselect">FILE_DIRECTORY</action>
+			</button>
+		</hbox>
+	</frame>
+	<hbox>
+		<button ok></button>
+		<button cancel></button>
+	</hbox>
+</vbox>'
+		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'
+</window>'
+
+#		echo "$MAIN_DIALOG"
+		export MAIN_DIALOG
+		GTKDIALOG_RESULT="`$GTKDIALOG_COMMAND --program=MAIN_DIALOG`"
+
+#		echo "$GTKDIALOG_RESULT"
+		for ONE_VAR in $GTKDIALOG_RESULT
+		do
+			if [ "${ONE_VAR#FILE_DIRECTORY=}" != "$ONE_VAR" ]; then
+				DIRPATH="`expr match "$ONE_VAR" 'FILE_DIRECTORY="\(.*\)"'`"
+			elif [ "${ONE_VAR#EXIT}" != "$ONE_VAR" ]; then
+				if [ "${ONE_VAR%\"OK\"}" = "$ONE_VAR" ]; then
+					exit
+				fi
+			fi
+		done
+
+#	elif [ `false` ]; then
+	elif [ "`which dialog`" != '' ]; then
+		exec 3>&1
+		DIRPATH=$(dialog --dselect "$APPDIR_PATH"/ 5 60 \
+		2>&1 1>&3)
+		exec 3>&-
+	else
+		echo
+		echo "Enter path to devx and iso/main-sfs files (just the directory)"
+		read DIRPATH
+		if [ ! -d "$DIRPATH" ]; then
+			DIRPATH=''
+			echo "$DIRPATH is not a directory"
+		fi
+	fi
+}
+
+# bash echo needs -e, dash echo will print the -e, so put the -e on it's own line
+if [ "`echo -e "\n$LIST_ITEMS" | grep "^$SELECTION " | grep -F 'other'`" != '' ]; then
+
+	select_dirpath
+
+	[ "$DIRPATH" != "${DIRPATH%/}" ] && DIRPATH="${DIRPATH%/}"
+#	echo "DIRPATH = $DIRPATH"
+	if [ -d "$DIRPATH" ]; then
+		LIST_ITEMS=''
+		SHORT_LIST_ITEMS=''
+		COUNTER=1
+
+		find_devx_matches "$DIRPATH"
+
+		select_devx
+
+	fi
+fi
+
+# bash echo needs -e, dash echo will print the -e, so put the -e on it's own line
+SELECTED_ITEM="`echo -e "\n$LIST_ITEMS" | grep "^$SELECTION "`"
+
+[ "$SELECTED_ITEM" = '' ] && exit
+#echo "$SELECTED_ITEM"
+
+SELECTED_ISOSFS="`echo "$SELECTED_ITEM" | cut -f 2 -d ' '`"
+[ "$SELECTED_ISOSFS" = '' ] && exit
+#echo "$SELECTED_ISOSFS"
+
+SELECTED_DEVX="`echo "$SELECTED_ITEM" | cut -f 3 -d ' '`"
+[ "$SELECTED_DEVX" = '' ] && exit
+#echo "$SELECTED_DEVX"
+
+#SELECTED_DEVX_PATH="`realpath ${SELECTED_DEVX}`"
+#echo "SELECTED_DEVX_PATH = $SELECTED_DEVX_PATH"
+if [ "${SELECTED_DEVX#/initrd}" = "$SELECTED_DEVX" -a "${SELECTED_DEVX#$APPDIR_PATH/}" != "`basename $SELECTED_DEVX`" ]; then
+	NEW_SELECTED_DEVX_PATH="SELECTED_DEVX_PATH=\"${SELECTED_DEVX%/$(basename $SELECTED_DEVX)}\""
+#	echo "$NEW_SELECTED_DEVX_PATH"
+
+	if [ "`grep 'SELECTED_DEVX_PATH=' run_woof.conf`" != '' ]; then
+		if [ "`grep 'SELECTED_DEVX_PATH' run_woof.conf`" != "$NEW_SELECTED_DEVX_PATH" ]; then
+
+			while read LINE ; do
+				if [ "`expr \"$LINE\" : '\(SELECTED_DEVX_PATH=\).*'`" != "" ]; then
+					echo "$NEW_SELECTED_DEVX_PATH" >> run_woof.conf.new
+				else
+					echo "$LINE" >> run_woof.conf.new
+				fi
+			done < run_woof.conf
+
+			mv run_woof.conf.new run_woof.conf
+
+		fi
+	else
+		echo "$NEW_SELECTED_DEVX_PATH" >> run_woof.conf
+	fi
+fi
+
+if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' ]; then
+	if [ "$TERMINAL_COMMAND" != '' ]; then
+		$TERMINAL_COMMAND -e sh -c "./run_woof $SELECTED_ISOSFS $SELECTED_DEVX $APPDIR_PATH ; echo 'Press <Enter> to continue' ; read VAR"
+	fi
+else
+	./run_woof $SELECTED_ISOSFS $SELECTED_DEVX $APPDIR_PATH
+fi
+
+#clear

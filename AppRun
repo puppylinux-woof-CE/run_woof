@@ -1,0 +1,20 @@
+#!/bin/sh
+
+SCRIPT_PATH="`realpath $0`"
+cd "${SCRIPT_PATH%/AppRun}"
+
+# TERMINAL_COMMAND and GTKDIALOG_COMMAND are defined in run_woof.conf
+[ ! -f ./run_woof.conf ] && ./edit-config --new
+. ./run_woof.conf
+
+# if running in an OS that doesn't have gtkdialog
+if [ "$GTKDIALOG_COMMAND" = '' -a "$DISPLAY" != '' ]; then
+	if [ "$TERMINAL_COMMAND" != '' ]; then
+		# run run_woof_helper in a terminal
+		$TERMINAL_COMMAND -e sh -c "./run_woof_helper ; echo 'Press <Enter> to continue' ; read VAR"
+	else
+		echo "Please run ./run_woof_helper instead."
+	fi
+else
+	./run_woof_helper
+fi
