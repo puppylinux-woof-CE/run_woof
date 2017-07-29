@@ -52,6 +52,15 @@ if [ ! -d woof-CE ]; then
 	fi
 else
 
+	if [ "$CHECK_FOR_UPDATES" != 'no' ]; then
+		if [ "`stat -c %U:%G woof-CE`" != 'root:root' ]; then
+			echo "Tip: If you want to check for updates from run_woof you can change"
+			echo "the ownership of the woof-CE repo with the following command:"
+			echo "chown -R root:root woof-CE"
+			CHECK_FOR_UPDATES='no'
+		fi
+	fi
+
 	if [ "$CHECK_FOR_UPDATES" = 'no' ]; then
 		YESNO='n'
 	elif [ "$CHECK_FOR_UPDATES" = 'yes' ]; then
