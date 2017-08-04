@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# LAYER_TYPE is defined in run_woof.conf
+# LAYER_TYPE and DELETE_TMP are defined in run_woof.conf
 [ -f "./run_woof.conf" ] && . "./run_woof.conf"
 
 [ "`whoami`" != "root" ] && exec sudo -A ${0} ${@}
@@ -44,6 +44,7 @@ cleanup() {
 	cond_unmount_del $DEVX_MNT
 	cond_unmount_del $SFS_MNT
 	cond_unmount_del $ISO_MNT
+	[ "$DELETE_TMP" = 'yes' ] && rm -rf "$SHARE_DIR/run_woof-tmp"
 }
 
 usage() {
@@ -53,6 +54,8 @@ usage() {
 
 [ $# -ne 3 ] && usage
 ([ ! -f "$1" ] || [ ! -f "$2" ] || [ ! -d "$3" ]) && usage
+
+SHARE_DIR="$3"
 
 trap cleanup EXIT
 trap cleanup TERM
@@ -103,11 +106,11 @@ mount -B /proc $AUFS_MNT/proc
 mkdir -p $AUFS_MNT/sys
 mount -B /sys $AUFS_MNT/sys
 
-[ ! -d "$3/tmp" ] && mkdir "$3/tmp"
-mount -B "$3/tmp" $AUFS_MNT/tmp
+mkdir -p "$SHARE_DIR/run_woof-tmp"
+mount -B "$SHARE_DIR/run_woof-tmp" $AUFS_MNT/tmp
 
 mkdir $SHARE_MNT
-mount -R "$3" $SHARE_MNT
+mount -R "$SHARE_DIR" $SHARE_MNT
 
 cp -f /etc/resolv.conf $AUFS_MNT/etc/
 [ -e "$XAUTHORITY" ] && cp -f $XAUTHORITY $AUFS_MNT/root/.Xauthority
