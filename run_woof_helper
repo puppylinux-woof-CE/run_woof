@@ -40,6 +40,38 @@ if [ "${STAT_OUTPUT#UNKNOWN}" != "$STAT_OUTPUT" ]; then
 	echo "Unable to determine file-system type."
 	echo "Output of stat -f -c '%T' $APPDIR_PATH"
 	echo "$STAT_OUTPUT"
+elif [ "${STAT_OUTPUT#aufs}" != "$STAT_OUTPUT" -o "${STAT_OUTPUT#overlayfs}" != "$STAT_OUTPUT" ]; then
+	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' -a "$WARN_LAYER" != 'no' ]; then
+		MAIN_DIALOG=''
+		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'<window title="run_woof">
+'
+		MAIN_DIALOG=${MAIN_DIALOG}'<vbox>
+	<text>
+<label>Running run_woof from a layered filesystem is experimental.</label>
+	</text>
+	<checkbox>
+		<label>Do not show this message again</label>
+		<action>if true echo "WARN_LAYER=no" >> run_woof.conf</action>
+	</checkbox>
+	<hbox>
+		<button ok></button>
+		<button cancel></button>
+	</hbox>
+</vbox>'
+		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'
+</window>'
+
+#		echo "$MAIN_DIALOG"
+		export MAIN_DIALOG
+		GTKDIALOG_RESULT="`$GTKDIALOG_COMMAND --program=MAIN_DIALOG`"
+
+		if [ "`echo "$GTKDIALOG_RESULT" | grep 'EXIT="Cancel"'`" != '' ]; then
+			exit
+		fi
+	else
+		echo "Warning: Running run_woof from a layered filesystem is experimental."
+	fi
+
 elif [ "${STAT_OUTPUT#ext}" = "$STAT_OUTPUT" ]; then
 	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' ]; then
 		MAIN_DIALOG=''
@@ -66,6 +98,45 @@ elif [ "${STAT_OUTPUT#ext}" = "$STAT_OUTPUT" ]; then
 		exit
 	fi
 fi
+
+
+STAT_BLOCKS="`stat -f -c '%b' "$APPDIR_PATH"`"
+STAT_BLOCK_SIZE="`stat -f -c '%s' "$APPDIR_PATH"`"
+# If the size of the partition where run_woof
+# is located is less then 5GiB give a warning.
+if [ "`expr $STAT_BLOCKS \* $STAT_BLOCK_SIZE / 1073741824`" -lt 5 ]; then
+	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' -a "$WARN_SIZE" != 'no' ]; then
+		MAIN_DIALOG=''
+		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'<window title="run_woof">
+'
+		MAIN_DIALOG=${MAIN_DIALOG}'<vbox>
+	<text>
+<label>Warning: woof-CE needs a lot of space for a build, it seems the current partition is only '"`expr $STAT_BLOCKS \* $STAT_BLOCK_SIZE / 1048576`"' MiB.</label>
+	</text>
+	<checkbox>
+		<label>Do not show this message again</label>
+		<action>if true echo "WARN_SIZE=no" >> run_woof.conf</action>
+	</checkbox>
+	<hbox>
+		<button ok></button>
+		<button cancel></button>
+	</hbox>
+</vbox>'
+		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'
+</window>'
+
+#		echo "$MAIN_DIALOG"
+		export MAIN_DIALOG
+		GTKDIALOG_RESULT="`$GTKDIALOG_COMMAND --program=MAIN_DIALOG`"
+
+		if [ "`echo "$GTKDIALOG_RESULT" | grep 'EXIT="Cancel"'`" != '' ]; then
+			exit
+		fi
+	else
+		echo "Warning: woof-CE needs a lot of space for a build, it seems the current partition is only `expr $STAT_BLOCKS \* $STAT_BLOCK_SIZE / 1048576` MiB."
+	fi
+fi
+
 
 if [ -e /etc/rc.d/PUPSTATE ]; then
 	. /etc/rc.d/PUPSTATE
