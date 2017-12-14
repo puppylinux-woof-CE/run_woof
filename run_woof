@@ -127,7 +127,7 @@ fi
 
 if [ "${2#*64_}" != "$2" ]; then
 	chroot $AUFS_MNT \
-		gdk-pixbuf-query-loaders > "$AUFS_MNT/etc/gtk-2.0/gdk-pixbuf.loaders"
+		gdk-pixbuf-query-loaders --update-cache
 
 	LC_ALL=C \
 	LANG=C \
@@ -136,7 +136,7 @@ if [ "${2#*64_}" != "$2" ]; then
 	chroot $AUFS_MNT /bin/bash -i
 else
 	linux32 chroot $AUFS_MNT \
-		gdk-pixbuf-query-loaders > "$AUFS_MNT/etc/gtk-2.0/gdk-pixbuf.loaders"
+		gdk-pixbuf-query-loaders --update-cache
 
 	LC_ALL=C \
 	LANG=C \
