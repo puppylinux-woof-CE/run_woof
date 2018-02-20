@@ -48,11 +48,11 @@ cleanup() {
 }
 
 usage() {
-	echo "Usage: $0 ISO|PUPPY_SFS DEVX_SFS SHARE" >&2
+	echo "Usage: $0 ISO|PUPPY_SFS DEVX_SFS SHARE [bashrc]" >&2
 	exit 1
 }
 
-[ $# -ne 3 ] && usage
+[ $# -ne 3 -a $# -ne 4 ] && usage
 ([ ! -f "$1" ] || [ ! -f "$2" ] || [ ! -d "$3" ]) && usage
 
 SHARE_DIR="$3"
@@ -114,7 +114,9 @@ mount -R "$SHARE_DIR" $SHARE_MNT
 
 cp -f /etc/resolv.conf $AUFS_MNT/etc/
 [ -e "$XAUTHORITY" ] && cp -f $XAUTHORITY $AUFS_MNT/root/.Xauthority
-if [ -f "$SHARE_MNT/run_woof/bashrc" ]; then
+if [ -n "$4" -a -f "$4" ]; then
+	cp "$4" $AUFS_MNT/root/.bashrc
+elif [ -f "$SHARE_MNT/run_woof/bashrc" ]; then
 	ln -sf share/run_woof/bashrc $AUFS_MNT/root/.bashrc
 elif [ -f "$SHARE_MNT/run_woof-master/bashrc" ]; then
 	ln -sf share/run_woof-master/bashrc $AUFS_MNT/root/.bashrc
