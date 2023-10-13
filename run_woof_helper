@@ -418,7 +418,12 @@ fi
 
 if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' ]; then
 	if [ "$TERMINAL_COMMAND" != '' ]; then
-		$TERMINAL_COMMAND -e sh -c "./run_woof $SELECTED_ISOSFS $SELECTED_DEVX $APPDIR_PATH ; echo 'Press <Enter> to continue' ; read VAR"
+        if [ "$TERMINAL_COMMAND" = 'gnome-terminal' ]; then
+            TERM_CMDLINE="${TERMINAL_COMMAND} --"
+        else
+            TERM_CMDLINE="${TERMINAL_COMMAND} -e"
+        fi
+		$TERM_CMDLINE sh -c "./run_woof $SELECTED_ISOSFS $SELECTED_DEVX $APPDIR_PATH ; echo 'Press <Enter> to continue' ; read VAR"
 	fi
 else
 	./run_woof $SELECTED_ISOSFS $SELECTED_DEVX $APPDIR_PATH
