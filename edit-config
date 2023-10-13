@@ -48,8 +48,6 @@ elif [ "`which gtkdialog4`" != '' ]; then
 	GTKDIALOG="${GTKDIALOG_COMMAND:-gtkdialog4}"
 elif [ "`which gtkdialog3`" != '' ]; then
 	GTKDIALOG="${GTKDIALOG_COMMAND:-gtkdialog3}"
-elif [ "`which gtkdialog2`" != '' ]; then
-	GTKDIALOG="${GTKDIALOG_COMMAND:-gtkdialog2}"
 fi
 
 UPDATES="${CHECK_FOR_UPDATES:-ask}"
@@ -72,11 +70,7 @@ fi
 
 # reusable function to make the LABEL VARIABLE pairs for the dialog box
 configvar () {
-	echo -n '	<hbox'
-	if [ "$GTKDIALOG" != "gtkdialog2" ]; then
-		echo -n ' homogeneous="true"'
-	fi
-	echo -n '>
+	echo -n '	<hbox homogeneous="true">
 		<text><label>'
 	echo -n "$1"
 	echo -n '</label></text>
@@ -123,27 +117,13 @@ config_combo () {
 }
 
 # beginning of dialog box definition
-CONFIG_DIALOG=''
-[ "$GTKDIALOG" != "gtkdialog2" ] && CONFIG_DIALOG=${CONFIG_DIALOG}'<window title="run_woof">
-'
-CONFIG_DIALOG=${CONFIG_DIALOG}'<vbox>
-'
-GTKDIALOG_VERSION="`$GTKDIALOG --version | head -n 1 | cut -f 3 -d ' '`"
-#echo "$GTKDIALOG_VERSION"
-vercmp $GTKDIALOG_VERSION ge 0.7.21
-if [ "$?" = '0' ];then
-	CONFIG_DIALOG=${CONFIG_DIALOG}"$(config_combo LAYER_TYPE $LAYER $OTHER_LAYER)"'
+CONFIG_DIALOG='<window title="run_woof">
+<vbox>
+'"$(config_combo LAYER_TYPE $LAYER $OTHER_LAYER)"'
 '"$(config_combo CHECK_FOR_UPDATES $UPDATES ask yes no)"'
 '"$(config_combo MERGE_UPDATES $MERGE ask yes no)"'
 '"$(config_combo DELETE_TMP $DELETE yes no)"'
 '
-else
-	CONFIG_DIALOG=${CONFIG_DIALOG}"$(configvar LAYER_TYPE $LAYER)"'
-'"$(configvar CHECK_FOR_UPDATES $UPDATES)"'
-'"$(configvar MERGE_UPDATES $MERGE)"'
-'"$(configvar DELETE_TMP $DELETE)"'
-'
-fi
 CONFIG_DIALOG=${CONFIG_DIALOG}"$(configvar TERMINAL_COMMAND $TERMCMND)"'
 '"$(configvar GTKDIALOG_COMMAND $GTKDIALOG)"'
 '"$(configvar SELECTED_DEVX_PATH \"$SELECTED_DEVX_PATH\")"'
@@ -151,8 +131,7 @@ CONFIG_DIALOG=${CONFIG_DIALOG}"$(configvar TERMINAL_COMMAND $TERMCMND)"'
 		<button ok></button>
 		<button cancel></button>
 	</hbox>
-</vbox>'
-[ "$GTKDIALOG" != "gtkdialog2" ] && CONFIG_DIALOG=${CONFIG_DIALOG}'
+</vbox>
 </window>'
 export CONFIG_DIALOG
 

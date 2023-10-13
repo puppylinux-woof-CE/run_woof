@@ -7,10 +7,8 @@
 
 if [ "$LAYER_TYPE" = '' ]; then
 	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' ]; then
-		MAIN_DIALOG=''
-		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'<window title="run_woof">
-'
-		MAIN_DIALOG=${MAIN_DIALOG}'<vbox>
+		MAIN_DIALOG='<window title="run_woof">
+<vbox>
 	<text>
 <label>run_woof needs either aufs or overlayfs.</label>
 	</text>
@@ -18,8 +16,7 @@ if [ "$LAYER_TYPE" = '' ]; then
 		<button ok></button>
 		<button cancel></button>
 	</hbox>
-</vbox>'
-		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'
+</vbox>
 </window>'
 
 #		echo "$MAIN_DIALOG"
@@ -42,10 +39,8 @@ if [ "${STAT_OUTPUT#UNKNOWN}" != "$STAT_OUTPUT" ]; then
 	echo "$STAT_OUTPUT"
 elif [ "${STAT_OUTPUT#aufs}" != "$STAT_OUTPUT" -o "${STAT_OUTPUT#overlayfs}" != "$STAT_OUTPUT" ]; then
 	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' -a "$WARN_LAYER" != 'no' ]; then
-		MAIN_DIALOG=''
-		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'<window title="run_woof">
-'
-		MAIN_DIALOG=${MAIN_DIALOG}'<vbox>
+		MAIN_DIALOG='<window title="run_woof">
+<vbox>
 	<text>
 <label>Running run_woof from a layered filesystem is experimental.</label>
 	</text>
@@ -57,8 +52,7 @@ elif [ "${STAT_OUTPUT#aufs}" != "$STAT_OUTPUT" -o "${STAT_OUTPUT#overlayfs}" != 
 		<button ok></button>
 		<button cancel></button>
 	</hbox>
-</vbox>'
-		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'
+</vbox>
 </window>'
 
 #		echo "$MAIN_DIALOG"
@@ -74,10 +68,8 @@ elif [ "${STAT_OUTPUT#aufs}" != "$STAT_OUTPUT" -o "${STAT_OUTPUT#overlayfs}" != 
 
 elif [ "${STAT_OUTPUT#ext}" = "$STAT_OUTPUT" ]; then
 	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' ]; then
-		MAIN_DIALOG=''
-		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'<window title="run_woof">
-'
-		MAIN_DIALOG=${MAIN_DIALOG}'<vbox>
+		MAIN_DIALOG='<window title="run_woof">
+<vbox>
 	<text>
 <label>run_woof needs to be in a Linux type (ext2/3/4) filesystem.</label>
 	</text>
@@ -85,8 +77,7 @@ elif [ "${STAT_OUTPUT#ext}" = "$STAT_OUTPUT" ]; then
 		<button ok></button>
 		<button cancel></button>
 	</hbox>
-</vbox>'
-		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'
+</vbox>
 </window>'
 
 #		echo "$MAIN_DIALOG"
@@ -106,10 +97,8 @@ STAT_BLOCK_SIZE="`stat -f -c '%s' "$APPDIR_PATH"`"
 # is located is less then 5GiB give a warning.
 if [ "`expr $STAT_BLOCKS \* $STAT_BLOCK_SIZE / 1073741824`" -lt 5 ]; then
 	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' -a "$WARN_SIZE" != 'no' ]; then
-		MAIN_DIALOG=''
-		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'<window title="run_woof">
-'
-		MAIN_DIALOG=${MAIN_DIALOG}'<vbox>
+		MAIN_DIALOG='<window title="run_woof">
+<vbox>
 	<text>
 <label>Warning: woof-CE needs a lot of space for a build, it seems the current partition is only '"`expr $STAT_BLOCKS \* $STAT_BLOCK_SIZE / 1048576`"' MiB.</label>
 	</text>
@@ -121,8 +110,7 @@ if [ "`expr $STAT_BLOCKS \* $STAT_BLOCK_SIZE / 1073741824`" -lt 5 ]; then
 		<button ok></button>
 		<button cancel></button>
 	</hbox>
-</vbox>'
-		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'
+</vbox>
 </window>'
 
 #		echo "$MAIN_DIALOG"
@@ -231,10 +219,8 @@ SHORT_LIST_ITEMS="${SHORT_LIST_ITEMS} $COUNTER other..."
 select_devx()
 {
 	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' ]; then
-		MAIN_DIALOG=''
-		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'<window title="run_woof">
-'
-		MAIN_DIALOG=${MAIN_DIALOG}'<vbox>
+		MAIN_DIALOG='<window title="run_woof">
+<vbox>
 	<frame Select which version of Puppy to use with run_woof>
 '
 		for ONE_TOKEN in $SHORT_LIST_ITEMS
@@ -267,8 +253,7 @@ select_devx()
 		<button ok></button>
 		<button cancel></button>
 	</hbox>
-</vbox>'
-		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'
+</vbox>
 </window>'
 
 #		echo "$MAIN_DIALOG"
@@ -319,10 +304,8 @@ select_devx
 select_dirpath()
 {
 	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' ]; then
-		MAIN_DIALOG=''
-		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'<window title="run_woof">
-'
-		MAIN_DIALOG=${MAIN_DIALOG}'<vbox>
+		MAIN_DIALOG='<window title="run_woof">
+<vbox>
 	<frame Select a Directory>
 		<hbox>
 			<entry accept="directory">
@@ -339,8 +322,7 @@ select_dirpath()
 		<button ok></button>
 		<button cancel></button>
 	</hbox>
-</vbox>'
-		[ "$GTKDIALOG" != "gtkdialog2" ] && MAIN_DIALOG=${MAIN_DIALOG}'
+</vbox>
 </window>'
 
 #		echo "$MAIN_DIALOG"
