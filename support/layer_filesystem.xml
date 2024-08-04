@@ -1,0 +1,16 @@
+<window title="run_woof">
+<vbox>
+	<text>
+<label>Running run_woof from a layered filesystem is experimental.</label>
+	</text>
+	<checkbox>
+		<label>Do not show this message again</label>
+		<variable>NO_WARN_LAYER</variable>
+	</checkbox>
+	<hbox>
+		<button ok></button>
+		<button cancel></button>
+	</hbox>
+</vbox>
+</window>
+

@@ -6,22 +6,8 @@
 . ./run_woof.conf
 
 if [ "$LAYER_TYPE" = '' ]; then
-	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' ]; then
-		MAIN_DIALOG='<window title="run_woof">
-<vbox>
-	<text>
-<label>run_woof needs either aufs or overlayfs.</label>
-	</text>
-	<hbox>
-		<button ok></button>
-		<button cancel></button>
-	</hbox>
-</vbox>
-</window>'
-
-#		echo "$MAIN_DIALOG"
-		export MAIN_DIALOG
-		GTKDIALOG_RESULT="`$GTKDIALOG_COMMAND --program=MAIN_DIALOG`"
+	if [ "$GTKDIALOG_COMMAND" != '' ] && [ "$DISPLAY" != '' ]; then
+		GTKDIALOG_RESULT="$($GTKDIALOG_COMMAND --file=support/layer_type.xml)"
 		exit
 	else
 		echo "Error: run_woof needs either aufs or overlayfs."
@@ -29,60 +15,32 @@ if [ "$LAYER_TYPE" = '' ]; then
 	fi
 fi
 
-SCRIPT_PATH="`realpath $0`"
+SCRIPT_PATH="$(realpath "$0")"
 APPDIR_PATH="${SCRIPT_PATH%/*/run_woof_helper}"
 
-STAT_OUTPUT="`stat -f -c '%T' "$APPDIR_PATH"`"
+STAT_OUTPUT="$(stat -f -c '%T' "$APPDIR_PATH")"
 if [ "${STAT_OUTPUT#UNKNOWN}" != "$STAT_OUTPUT" ]; then
 	echo "Unable to determine file-system type."
 	echo "Output of stat -f -c '%T' $APPDIR_PATH"
 	echo "$STAT_OUTPUT"
-elif [ "${STAT_OUTPUT#aufs}" != "$STAT_OUTPUT" -o "${STAT_OUTPUT#overlayfs}" != "$STAT_OUTPUT" ]; then
-	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' -a "$WARN_LAYER" != 'no' ]; then
-		MAIN_DIALOG='<window title="run_woof">
-<vbox>
-	<text>
-<label>Running run_woof from a layered filesystem is experimental.</label>
-	</text>
-	<checkbox>
-		<label>Do not show this message again</label>
-		<action>if true echo "WARN_LAYER=no" >> run_woof.conf</action>
-	</checkbox>
-	<hbox>
-		<button ok></button>
-		<button cancel></button>
-	</hbox>
-</vbox>
-</window>'
+elif [ "${STAT_OUTPUT#aufs}" != "$STAT_OUTPUT" ] || [ "${STAT_OUTPUT#overlayfs}" != "$STAT_OUTPUT" ]; then
+	if [ "$GTKDIALOG_COMMAND" != '' ] && [ "$DISPLAY" != '' ] && [ "$WARN_LAYER" != 'no' ]; then
+		GTKDIALOG_RESULT="$($GTKDIALOG_COMMAND --file=support/layer_filesystem.xml)"
 
-#		echo "$MAIN_DIALOG"
-		export MAIN_DIALOG
-		GTKDIALOG_RESULT="`$GTKDIALOG_COMMAND --program=MAIN_DIALOG`"
-
-		if [ "`echo "$GTKDIALOG_RESULT" | grep 'EXIT="Cancel"'`" != '' ]; then
+		if [ "$(echo "$GTKDIALOG_RESULT" | grep 'EXIT="Cancel"')" != '' ]; then
 			exit
+		else
+			if [ "$(echo "$GTKDIALOG_RESULT" | grep 'NO_WARN_LAYER="true"')" != '' ]; then
+				echo "WARN_LAYER=no" >> run_woof.conf
+			fi
 		fi
 	else
 		echo "Warning: Running run_woof from a layered filesystem is experimental."
 	fi
 
 elif [ "${STAT_OUTPUT#ext}" = "$STAT_OUTPUT" ]; then
-	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' ]; then
-		MAIN_DIALOG='<window title="run_woof">
-<vbox>
-	<text>
-<label>run_woof needs to be in a Linux type (ext2/3/4) filesystem.</label>
-	</text>
-	<hbox>
-		<button ok></button>
-		<button cancel></button>
-	</hbox>
-</vbox>
-</window>'
-
-#		echo "$MAIN_DIALOG"
-		export MAIN_DIALOG
-		GTKDIALOG_RESULT="`$GTKDIALOG_COMMAND --program=MAIN_DIALOG`"
+	if [ "$GTKDIALOG_COMMAND" != '' ] && [ "$DISPLAY" != '' ]; then
+		GTKDIALOG_RESULT="$($GTKDIALOG_COMMAND --file=support/filesystem_type.xml)"
 		exit
 	else
 		echo "Error: run_woof needs to be in a Linux type (ext2/3/4) filesystem."
@@ -91,42 +49,33 @@ elif [ "${STAT_OUTPUT#ext}" = "$STAT_OUTPUT" ]; then
 fi
 
 
-STAT_BLOCKS="`stat -f -c '%b' "$APPDIR_PATH"`"
-STAT_BLOCK_SIZE="`stat -f -c '%s' "$APPDIR_PATH"`"
+STAT_BLOCKS="$(stat -f -c '%b' "$APPDIR_PATH")"
+STAT_BLOCK_SIZE="$(stat -f -c '%s' "$APPDIR_PATH")"
 # If the size of the partition where run_woof
 # is located is less then 5GiB give a warning.
-if [ "`expr $STAT_BLOCKS \* $STAT_BLOCK_SIZE / 1073741824`" -lt 5 ]; then
-	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' -a "$WARN_SIZE" != 'no' ]; then
-		MAIN_DIALOG='<window title="run_woof">
-<vbox>
-	<text>
-<label>Warning: woof-CE needs a lot of space for a build, it seems the current partition is only '"`expr $STAT_BLOCKS \* $STAT_BLOCK_SIZE / 1048576`"' MiB.</label>
-	</text>
-	<checkbox>
-		<label>Do not show this message again</label>
-		<action>if true echo "WARN_SIZE=no" >> run_woof.conf</action>
-	</checkbox>
-	<hbox>
-		<button ok></button>
-		<button cancel></button>
-	</hbox>
-</vbox>
-</window>'
+if [ "$((STAT_BLOCKS * STAT_BLOCK_SIZE / 1073741824))" -lt 5 ]; then
+	if [ "$GTKDIALOG_COMMAND" != '' ] && [ "$DISPLAY" != '' ] && [ "$WARN_SIZE" != 'no' ]; then
 
-#		echo "$MAIN_DIALOG"
-		export MAIN_DIALOG
-		GTKDIALOG_RESULT="`$GTKDIALOG_COMMAND --program=MAIN_DIALOG`"
+		# FILESYSTEM_SIZE is in MiB.
+		FILESYSTEM_SIZE="$((STAT_BLOCKS * STAT_BLOCK_SIZE / 1048576))"
+		export FILESYSTEM_SIZE
+		GTKDIALOG_RESULT="$($GTKDIALOG_COMMAND --file=support/filesystem_size.xml)"
 
-		if [ "`echo "$GTKDIALOG_RESULT" | grep 'EXIT="Cancel"'`" != '' ]; then
+		if [ "$(echo "$GTKDIALOG_RESULT" | grep 'EXIT="Cancel"')" != '' ]; then
 			exit
+		else
+			if [ "$(echo "$GTKDIALOG_RESULT" | grep 'NO_WARN_SIZE="true"')" != '' ]; then
+				echo "WARN_SIZE=no" >> run_woof.conf
+			fi
 		fi
 	else
-		echo "Warning: woof-CE needs a lot of space for a build, it seems the current partition is only `expr $STAT_BLOCKS \* $STAT_BLOCK_SIZE / 1048576` MiB."
+		echo "Warning: woof-CE needs a lot of space for a build, it seems the current partition is only $((STAT_BLOCKS * STAT_BLOCK_SIZE / 1048576)) MiB."
 	fi
 fi
 
 
 if [ -e /etc/rc.d/PUPSTATE ]; then
+	# shellcheck source=/dev/null
 	. /etc/rc.d/PUPSTATE
 
 	SFS_NAME="${PUPSFS##*/}"
@@ -165,7 +114,7 @@ fi
 
 find_devx_matches()
 {
-	for ONE_DEVX in ${1}/devx*.sfs
+	for ONE_DEVX in "${1}"/devx*.sfs
 	do
 		if [ "$ONE_DEVX" = "${1}/devx*" ]; then
 			break
@@ -178,26 +127,28 @@ find_devx_matches()
 #		echo "ONE_DEVX = $ONE_DEVX"
 
 #		echo "${ONE_DEVX#${1}/}"
-		DEVX_NAME="`expr match "${ONE_DEVX#${1}/}" 'devx_\([[:alnum:]]*\)'`"
+		DEVX_NAME="$(expr "${ONE_DEVX#"${1}"/}" : 'devx_\([[:alnum:]]*\)')"
 #		echo "DEVX_NAME = $DEVX_NAME"
 
-		DEVX_VERSION="`expr match "${ONE_DEVX#${1}/}" "devx_$DEVX_NAME.\([[:digit:]\.]*\)\."`"
+		DEVX_VERSION="$(expr "${ONE_DEVX#"${1}"/}" : "devx_$DEVX_NAME.\([[:digit:]\.]*\)\.")"
 #		echo "DEVX_VERSION = $DEVX_VERSION"
 
-		ONE_ISO="`ls "${1}/${DEVX_NAME}-${DEVX_VERSION}"*.iso 2> /dev/null`"
+		ONE_ISO="$(ls "${1}/${DEVX_NAME}-${DEVX_VERSION}"*.iso 2> /dev/null)"
 		if [ -e "$ONE_ISO" ]; then
 #			echo "ONE_ISO = $ONE_ISO"
-			LIST_ITEMS="${LIST_ITEMS}\n$COUNTER $ONE_ISO $ONE_DEVX"
+			LIST_ITEMS="${LIST_ITEMS}
+$COUNTER $ONE_ISO $ONE_DEVX"
 			SHORT_LIST_ITEMS="${SHORT_LIST_ITEMS} $COUNTER ${ONE_ISO##*/}"
 			COUNTER=$((COUNTER+1))
 		else
 			ONE_ISO=''
 		fi
 
-		ONE_SFS="`ls "${1}/puppy_${DEVX_NAME}_${DEVX_VERSION}"*.sfs 2> /dev/null`"
+		ONE_SFS="$(ls "${1}/puppy_${DEVX_NAME}_${DEVX_VERSION}"*.sfs 2> /dev/null)"
 		if [ -e "$ONE_SFS" ]; then
 #			echo "ONE_SFS = $ONE_SFS"
-			LIST_ITEMS="${LIST_ITEMS}\n$COUNTER $ONE_SFS $ONE_DEVX"
+			LIST_ITEMS="${LIST_ITEMS}
+$COUNTER $ONE_SFS $ONE_DEVX"
 			SHORT_LIST_ITEMS="${SHORT_LIST_ITEMS} $COUNTER ${ONE_SFS##*/}"
 			COUNTER=$((COUNTER+1))
 		else
@@ -209,23 +160,24 @@ find_devx_matches()
 find_devx_matches "$APPDIR_PATH"
 [ "$SELECTED_DEVX_PATH" != '' ] && find_devx_matches "$SELECTED_DEVX_PATH"
 
-LIST_ITEMS="${LIST_ITEMS}\n$COUNTER other"
+LIST_ITEMS="${LIST_ITEMS}
+$COUNTER other"
 SHORT_LIST_ITEMS="${SHORT_LIST_ITEMS} $COUNTER other..."
 
-## bash echo needs -e, dash echo prints the -e, use /bin/echo
-#/bin/echo -e "$LIST_ITEMS"
+#echo "$LIST_ITEMS"
 #echo "$SHORT_LIST_ITEMS"
 
 select_devx()
 {
-	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' ]; then
+	if [ "$GTKDIALOG_COMMAND" != '' ] && [ "$DISPLAY" != '' ]; then
+		# shellcheck disable=SC2089 # shellcheck does not like the double quotes in the xml
 		MAIN_DIALOG='<window title="run_woof">
 <vbox>
 	<frame Select which version of Puppy to use with run_woof>
 '
 		for ONE_TOKEN in $SHORT_LIST_ITEMS
 		do
-			if [ "`expr match $ONE_TOKEN '\([[:digit:]]*\)'`" = "$ONE_TOKEN" ]; then
+			if [ "$(expr "$ONE_TOKEN" : '\([[:digit:]]*\)')" = "$ONE_TOKEN" ]; then
 #				echo -n "($ONE_TOKEN) "
 				MAIN_DIALOG=${MAIN_DIALOG}"
 		<radiobutton>
@@ -239,9 +191,10 @@ select_devx()
 			fi
 		done
 		if [ "$SHORT_LIST_ITEMS" = '' ]; then
-			MAIN_DIALOG=${MAIN_DIALOG}'
-			<text><label>No devx found.</label></text>'
+			MAIN_DIALOG=${MAIN_DIALOG}"
+			<text><label>No devx found.</label></text>"
 		fi
+		# shellcheck disable=SC2089
 		MAIN_DIALOG=${MAIN_DIALOG}'
 	</frame>
 	<hbox>
@@ -257,14 +210,15 @@ select_devx()
 </window>'
 
 #		echo "$MAIN_DIALOG"
+		# shellcheck disable=SC2090
 		export MAIN_DIALOG
-		GTKDIALOG_RESULT="`$GTKDIALOG_COMMAND --program=MAIN_DIALOG`"
+		GTKDIALOG_RESULT="$($GTKDIALOG_COMMAND --program=MAIN_DIALOG)"
 
 #		echo "$GTKDIALOG_RESULT"
 		for ONE_VAR in $GTKDIALOG_RESULT
 		do
 			if [ "${ONE_VAR%\"true\"}" != "$ONE_VAR" ]; then
-				SELECTION="`expr match "$ONE_VAR" 'RADIOBUTTON\([[:digit:]]*\)'`"
+				SELECTION="$(expr "$ONE_VAR" : 'RADIOBUTTON\([[:digit:]]*\)')"
 			elif [ "${ONE_VAR#EXIT}" != "$ONE_VAR" ]; then
 				if [ "${ONE_VAR%\"edit-config\"}" != "$ONE_VAR" ]; then
 					exec ./edit-config
@@ -274,9 +228,10 @@ select_devx()
 			fi
 		done
 
-#	elif [ `false` ]; then
-	elif [ "`which dialog`" != '' ]; then
+#	elif [ "$(false)" ]; then
+	elif [ "$(which dialog)" != '' ]; then
 		exec 3>&1
+		# shellcheck disable=SC2086 # Intended splitting of SHORT_LIST_ITEMS
 		SELECTION=$(dialog --menu "Select which version of Puppy to use with run_woof" \
 		17 60 10 $SHORT_LIST_ITEMS \
 		2>&1 1>&3)
@@ -285,14 +240,14 @@ select_devx()
 		echo
 		for ONE_TOKEN in $SHORT_LIST_ITEMS
 		do
-			if [ "`expr match $ONE_TOKEN '\([[:digit:]]*\)'`" = "$ONE_TOKEN" ]; then
-				echo -n "($ONE_TOKEN) "
+			if [ "$(expr "$ONE_TOKEN" : '\([[:digit:]]*\)')" = "$ONE_TOKEN" ]; then
+				printf  "%s " "${ONE_TOKEN}"
 			else
 				echo "$ONE_TOKEN"
 			fi
 		done
 		echo "Enter number for selection and press <Enter>"
-		read SELECTION
+		read -r SELECTION
 	fi
 }
 
@@ -303,37 +258,14 @@ select_devx
 
 select_dirpath()
 {
-	if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' ]; then
-		MAIN_DIALOG='<window title="run_woof">
-<vbox>
-	<frame Select a Directory>
-		<hbox>
-			<entry accept="directory">
-				<variable>FILE_DIRECTORY</variable>
-			</entry>
-			<button>
-				<input file stock="gtk-open"></input>
-				<variable>FILE_BROWSE_DIRECTORY</variable>
-				<action type="fileselect">FILE_DIRECTORY</action>
-			</button>
-		</hbox>
-	</frame>
-	<hbox>
-		<button ok></button>
-		<button cancel></button>
-	</hbox>
-</vbox>
-</window>'
-
-#		echo "$MAIN_DIALOG"
-		export MAIN_DIALOG
-		GTKDIALOG_RESULT="`$GTKDIALOG_COMMAND --program=MAIN_DIALOG`"
+	if [ "$GTKDIALOG_COMMAND" != '' ] && [ "$DISPLAY" != '' ]; then
+		GTKDIALOG_RESULT="$($GTKDIALOG_COMMAND --file=support/select_directory.xml)"
 
 #		echo "$GTKDIALOG_RESULT"
 		for ONE_VAR in $GTKDIALOG_RESULT
 		do
 			if [ "${ONE_VAR#FILE_DIRECTORY=}" != "$ONE_VAR" ]; then
-				DIRPATH="`expr match "$ONE_VAR" 'FILE_DIRECTORY="\(.*\)"'`"
+				DIRPATH="$(expr "$ONE_VAR" : 'FILE_DIRECTORY="\(.*\)"')"
 			elif [ "${ONE_VAR#EXIT}" != "$ONE_VAR" ]; then
 				if [ "${ONE_VAR%\"OK\"}" = "$ONE_VAR" ]; then
 					exit
@@ -341,8 +273,8 @@ select_dirpath()
 			fi
 		done
 
-#	elif [ `false` ]; then
-	elif [ "`which dialog`" != '' ]; then
+#	elif [ "$(false)" ]; then
+	elif [ "$(which dialog)" != '' ]; then
 		exec 3>&1
 		DIRPATH=$(dialog --dselect "$APPDIR_PATH"/ 5 60 \
 		2>&1 1>&3)
@@ -350,7 +282,7 @@ select_dirpath()
 	else
 		echo
 		echo "Enter path to devx and iso/main-sfs files (just the directory)"
-		read DIRPATH
+		read -r DIRPATH
 		if [ ! -d "$DIRPATH" ]; then
 			DIRPATH=''
 			echo "$DIRPATH is not a directory"
@@ -358,8 +290,7 @@ select_dirpath()
 	fi
 }
 
-# bash echo needs -e, dash echo will print the -e, so put the -e on it's own line
-if [ "`echo -e "\n$LIST_ITEMS" | grep "^$SELECTION " | grep -F 'other'`" != '' ]; then
+if [ "$(echo "$LIST_ITEMS" | grep "^$SELECTION " | grep -F 'other')" != '' ]; then
 
 	select_dirpath
 
@@ -377,31 +308,30 @@ if [ "`echo -e "\n$LIST_ITEMS" | grep "^$SELECTION " | grep -F 'other'`" != '' ]
 	fi
 fi
 
-# bash echo needs -e, dash echo will print the -e, so put the -e on it's own line
-SELECTED_ITEM="`echo -e "\n$LIST_ITEMS" | grep "^$SELECTION "`"
+SELECTED_ITEM="$(echo "$LIST_ITEMS" | grep "^$SELECTION ")"
 
 [ "$SELECTED_ITEM" = '' ] && exit
 #echo "$SELECTED_ITEM"
 
-SELECTED_ISOSFS="`echo "$SELECTED_ITEM" | cut -f 2 -d ' '`"
+SELECTED_ISOSFS="$(echo "$SELECTED_ITEM" | cut -f 2 -d ' ')"
 [ "$SELECTED_ISOSFS" = '' ] && exit
 #echo "$SELECTED_ISOSFS"
 
-SELECTED_DEVX="`echo "$SELECTED_ITEM" | cut -f 3 -d ' '`"
+SELECTED_DEVX="$(echo "$SELECTED_ITEM" | cut -f 3 -d ' ')"
 [ "$SELECTED_DEVX" = '' ] && exit
 #echo "$SELECTED_DEVX"
 
-#SELECTED_DEVX_PATH="`realpath ${SELECTED_DEVX}`"
+#SELECTED_DEVX_PATH="$(realpath "${SELECTED_DEVX}")"
 #echo "SELECTED_DEVX_PATH = $SELECTED_DEVX_PATH"
-if [ "${SELECTED_DEVX#/initrd}" = "$SELECTED_DEVX" -a "${SELECTED_DEVX#$APPDIR_PATH/}" != "`basename $SELECTED_DEVX`" ]; then
-	NEW_SELECTED_DEVX_PATH="SELECTED_DEVX_PATH=\"${SELECTED_DEVX%/$(basename $SELECTED_DEVX)}\""
+if [ "${SELECTED_DEVX#/initrd}" = "$SELECTED_DEVX" ] && [ "${SELECTED_DEVX#"${APPDIR_PATH}"/}" != "$(basename "${SELECTED_DEVX}")" ]; then
+	NEW_SELECTED_DEVX_PATH="SELECTED_DEVX_PATH=\"${SELECTED_DEVX%/"$(basename "${SELECTED_DEVX}")"}\""
 #	echo "$NEW_SELECTED_DEVX_PATH"
 
-	if [ "`grep 'SELECTED_DEVX_PATH=' run_woof.conf`" != '' ]; then
-		if [ "`grep 'SELECTED_DEVX_PATH' run_woof.conf`" != "$NEW_SELECTED_DEVX_PATH" ]; then
+	if [ "$(grep 'SELECTED_DEVX_PATH=' run_woof.conf)" != '' ]; then
+		if [ "$(grep 'SELECTED_DEVX_PATH' run_woof.conf)" != "$NEW_SELECTED_DEVX_PATH" ]; then
 
-			while read LINE ; do
-				if [ "`expr \"$LINE\" : '\(SELECTED_DEVX_PATH=\).*'`" != "" ]; then
+			while read -r LINE ; do
+				if [ "$(expr "$LINE" : '\(SELECTED_DEVX_PATH=\).*')" != "" ]; then
 					echo "$NEW_SELECTED_DEVX_PATH" >> run_woof.conf.new
 				else
 					echo "$LINE" >> run_woof.conf.new
@@ -416,7 +346,7 @@ if [ "${SELECTED_DEVX#/initrd}" = "$SELECTED_DEVX" -a "${SELECTED_DEVX#$APPDIR_P
 	fi
 fi
 
-if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' ]; then
+if [ "$GTKDIALOG_COMMAND" != '' ] && [ "$DISPLAY" != '' ]; then
 	if [ "$TERMINAL_COMMAND" != '' ]; then
         if [ "$TERMINAL_COMMAND" = 'gnome-terminal' ]; then
             TERM_CMDLINE="${TERMINAL_COMMAND} --"
@@ -426,7 +356,7 @@ if [ "$GTKDIALOG_COMMAND" != '' -a "$DISPLAY" != '' ]; then
 		$TERM_CMDLINE sh -c "./run_woof $SELECTED_ISOSFS $SELECTED_DEVX $APPDIR_PATH ; echo 'Press <Enter> to continue' ; read VAR"
 	fi
 else
-	./run_woof $SELECTED_ISOSFS $SELECTED_DEVX $APPDIR_PATH
+	./run_woof "${SELECTED_ISOSFS}" "${SELECTED_DEVX}" "${APPDIR_PATH}"
 fi
 
 #clear

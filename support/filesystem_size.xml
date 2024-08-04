@@ -1,0 +1,19 @@
+<window title="run_woof">
+<vbox>
+	<text>
+		<label>Warning: woof-CE needs a lot of space for a build.</label>
+	</text>
+	<text>
+		<input>echo "Current partition is only ${FILESYSTEM_SIZE} MiB."</input>
+	</text>
+	<checkbox>
+		<label>Do not show this message again</label>
+		<variable>NO_WARN_SIZE</variable>
+	</checkbox>
+	<hbox>
+		<button ok></button>
+		<button cancel></button>
+	</hbox>
+</vbox>
+</window>
+

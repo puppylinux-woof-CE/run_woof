@@ -1,0 +1,12 @@
+<window title="run_woof">
+<vbox>
+	<text>
+<label>run_woof needs to be in a Linux type (ext2/3/4) filesystem.</label>
+	</text>
+	<hbox>
+		<button ok></button>
+		<button cancel></button>
+	</hbox>
+</vbox>
+</window>
+
