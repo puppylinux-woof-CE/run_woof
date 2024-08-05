@@ -134,6 +134,8 @@ find_devx_matches()
 #		echo "DEVX_VERSION = $DEVX_VERSION"
 
 		ONE_ISO="$(ls "${1}/${DEVX_NAME}-${DEVX_VERSION}"*.iso 2> /dev/null)"
+		# if a matching iso was not found try matching just the version number
+		[ ! -e "$ONE_ISO" ] && ONE_ISO="$(ls "${1}/"*"${DEVX_VERSION}"*.iso 2> /dev/null)"
 		if [ -e "$ONE_ISO" ]; then
 #			echo "ONE_ISO = $ONE_ISO"
 			LIST_ITEMS="${LIST_ITEMS}
