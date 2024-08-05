@@ -1,0 +1,12 @@
+<window title="run_woof">
+<vbox>
+	<text>
+<label>run_woof needs either aufs or overlayfs.</label>
+	</text>
+	<hbox>
+		<button ok></button>
+		<button cancel></button>
+	</hbox>
+</vbox>
+</window>
+
