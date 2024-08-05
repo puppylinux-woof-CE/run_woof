@@ -2,7 +2,7 @@
 
 # SELECTED_DEVX_PATH, LAYER_TYPE, TERMINAL_COMMAND and GTKDIALOG_COMMAND
 # are defined in run_woof.conf
-[ ! -f ./run_woof.conf ] && ./edit-config --new
+[ ! -f ./run_woof.conf ] && ./support/edit-config --new
 . ./run_woof.conf
 
 if [ "$LAYER_TYPE" = '' ]; then
@@ -221,7 +221,7 @@ select_devx()
 				SELECTION="$(expr "$ONE_VAR" : 'RADIOBUTTON\([[:digit:]]*\)')"
 			elif [ "${ONE_VAR#EXIT}" != "$ONE_VAR" ]; then
 				if [ "${ONE_VAR%\"edit-config\"}" != "$ONE_VAR" ]; then
-					exec ./edit-config
+					exec ./support/edit-config
 				elif [ "${ONE_VAR%\"OK\"}" = "$ONE_VAR" ]; then
 					exit
 				fi
