@@ -1,0 +1,229 @@
+#!/bin/sh
+
+# if this script was run from the support directory
+[ "${PWD%/support}" != "${PWD}" ] && cd ..
+
+# load config file if it exists
+[ -f run_woof.conf ] && . ./run_woof.conf
+
+# detect which overlay file systems are available
+if [ "$(grep 'aufs' /proc/filesystems)" != '' ] || [ "$(find /lib/modules/"$(uname -r)" -iname aufs.ko)" != '' ]; then
+	HAVE_AUFS='yes'
+fi
+if [ "$(grep 'overlay' /proc/filesystems)" != '' ] || [ "$(find /lib/modules/"$(uname -r)" -iname overlay.ko)" != '' ]; then
+	HAVE_OVERLAY='yes'
+fi
+
+# for testing
+#HAVE_OVERLAY='yes'
+#HAVE_AUFS='yes'
+
+if [ "$HAVE_AUFS" = 'yes' ]; then
+	LAYER="${LAYER_TYPE:-aufs}"
+	if [ "$LAYER" != 'aufs' ]; then
+		OTHER_LAYER=aufs
+	fi
+fi
+if [ "$HAVE_OVERLAY" = 'yes' ]; then
+	[ "$LAYER" = '' ] && LAYER="${LAYER_TYPE:-overlay}"
+	if [ "$LAYER" != 'overlay' ]; then
+		OTHER_LAYER=overlay
+	fi
+fi
+
+# try to find a terminal emulator
+if [ "$(which urxvt)" != '' ]; then
+	TERMCMND="${TERMINAL_COMMAND:-urxvt}"
+elif [ "$(which rxvt)" != '' ]; then
+	TERMCMND="${TERMINAL_COMMAND:-rxvt}"
+elif [ "$(which lxterminal)" != '' ]; then
+	TERMCMND="${TERMINAL_COMMAND:-lxterminal}"
+elif [ "$(which xterm)" != '' ]; then
+	TERMCMND="${TERMINAL_COMMAND:-xterm}"
+elif [ "$(which konsole)" != '' ]; then
+	TERMCMND="${TERMINAL_COMMAND:-konsole}"
+elif [ "$(which gnome-terminal)" != '' ]; then
+	TERMCMND="${TERMINAL_COMMAND:-gnome-terminal}"
+fi
+
+# some versions of Puppy have different versions of gtkdialog,
+# this makes it easier to switch between versions for testing
+if [ "$(which gtkdialog)" != '' ]; then
+	GTKDIALOG="${GTKDIALOG_COMMAND:-gtkdialog}"
+elif [ "$(which gtkdialog4)" != '' ]; then
+	GTKDIALOG="${GTKDIALOG_COMMAND:-gtkdialog4}"
+elif [ "$(which gtkdialog3)" != '' ]; then
+	GTKDIALOG="${GTKDIALOG_COMMAND:-gtkdialog3}"
+fi
+
+UPDATES="${CHECK_FOR_UPDATES:-ask}"
+MERGE="${MERGE_UPDATES:-ask}"
+DELETE="${DELETE_TMP:-yes}"
+
+# if edit-config is run with the --new option it writes
+# all defaults to run_woof.conf and exits
+if [ "$1" = '--new' ]; then
+	{
+		echo "# This is the config file for the run_woof Rox AppDir."
+		echo
+		echo "LAYER_TYPE=\"$LAYER\""
+		echo "TERMINAL_COMMAND=\"$TERMCMND\""
+		echo "GTKDIALOG_COMMAND=\"$GTKDIALOG\""
+		echo "CHECK_FOR_UPDATES=\"$UPDATES\""
+		echo "MERGE_UPDATES=\"$MERGE\""
+		echo "DELETE_TMP=\"$DELETE\""
+		} > run_woof.conf
+	exit
+fi
+
+# reusable function to make the LABEL VARIABLE pairs for the dialog box
+configvar () {
+	printf "%s" '	<hbox homogeneous="true">
+		<text><label>'
+	printf "%s" "$1"
+	printf "%s" '</label></text>
+		<entry>
+			<default>'
+	printf "%s" "$2"
+	printf "%s" '</default>
+			<variable>'
+	printf "%s" "$1"
+	printf "%s" '</variable>
+		</entry>
+	</hbox>
+	'
+}
+
+# function to make the combo box for the dialog box
+config_combo () {
+	printf "%s" '	<hbox homogeneous="true">
+		<text><label>'
+	printf "%s" "$1"
+	printf "%s" '</label></text>
+		<comboboxtext>
+			<default>'
+	printf "%s" "$2"
+	printf "%s" '</default>
+			<variable>'
+	printf "%s" "$1"
+	printf "%s" '</variable>
+'
+	DEFAULT="$2"
+	printf "%s" "			<item>$DEFAULT</item>
+"
+	shift
+	while [ "$2" != '' ]; do
+		if [ "$2" != "$DEFAULT" ]; then
+			printf "%s" "			<item>$2</item>
+"
+		fi
+		shift
+	done
+	printf "%s" '		</comboboxtext>
+	</hbox>
+	'
+}
+
+# beginning of dialog box definition
+# shellcheck disable=SC2089 # shellcheck does not like the double quotes in the xml
+CONFIG_DIALOG='<window title="run_woof">
+<vbox>
+'"$(config_combo LAYER_TYPE $LAYER $OTHER_LAYER)"'
+'"$(config_combo CHECK_FOR_UPDATES $UPDATES ask yes no)"'
+'"$(config_combo MERGE_UPDATES $MERGE ask yes no)"'
+'"$(config_combo DELETE_TMP $DELETE yes no)"'
+'
+CONFIG_DIALOG=${CONFIG_DIALOG}"$(configvar TERMINAL_COMMAND $TERMCMND)"'
+'"$(configvar GTKDIALOG_COMMAND $GTKDIALOG)"'
+'"$(configvar SELECTED_DEVX_PATH \""${SELECTED_DEVX_PATH}"\")"'
+	<hbox>
+		<button ok></button>
+		<button cancel></button>
+	</hbox>
+</vbox>
+</window>'
+# shellcheck disable=SC2090
+export CONFIG_DIALOG
+
+# Uncomment the following line to see the finished dialog in the terminal.
+# echo "$CONFIG_DIALOG"
+
+CONFIG_RESULT="$($GTKDIALOG --program=CONFIG_DIALOG)"
+
+# Uncomment the following line to see any errors for debugging.
+# echo "$CONFIG_RESULT"
+
+# make sure the OK button was clicked
+if [ "$(echo "${CONFIG_RESULT}" | grep '^EXIT=')" = 'EXIT="OK"' ] ; then
+
+	# if GTKDIALOG_COMMAND was changed, make sure the new one works
+	NEW_GTKDIALOG_COMMAND="$(echo "${CONFIG_RESULT}" | grep '^GTKDIALOG_COMMAND=')"
+	if [ "$NEW_GTKDIALOG_COMMAND" != "GTKDIALOG_COMMAND=\"$GTKDIALOG\"" ]; then
+		TEST_GTKDIALOG="$(expr "$NEW_GTKDIALOG_COMMAND" : 'GTKDIALOG_COMMAND=\"\(.*\)\"')"
+		export TEST_DIALOG='<vbox><text><label>This is a test dialog to make sure that the GTKDIALOG_COMMAND chosen works.  Just click OK.</label></text><hbox><button ok></button></hbox></vbox>'
+		TEST_RESULT="$($TEST_GTKDIALOG --program=TEST_DIALOG)"
+		if [ "$(echo "${TEST_RESULT}" | grep '^EXIT=')" != 'EXIT="OK"' ] ; then
+			NEW_GTKDIALOG_COMMAND="GTKDIALOG_COMMAND=\"$GTKDIALOG\""
+		fi
+	fi
+
+	NEW_LAYER_TYPE="$(echo "${CONFIG_RESULT}" | grep '^LAYER_TYPE=')"
+	NEW_TERMINAL_COMMAND="$(echo "${CONFIG_RESULT}" | grep '^TERMINAL_COMMAND=')"
+	NEW_CHECK_FOR_UPDATES="$(echo "${CONFIG_RESULT}" | grep '^CHECK_FOR_UPDATES=')"
+	NEW_MERGE_UPDATES="$(echo "${CONFIG_RESULT}" | grep '^MERGE_UPDATES=')"
+	NEW_DELETE_TMP="$(echo "${CONFIG_RESULT}" | grep '^DELETE_TMP=')"
+	NEW_SELECTED_DEVX_PATH="$(echo "${CONFIG_RESULT}" | grep '^SELECTED_DEVX_PATH=')"
+
+	# if run_woof.conf already exists
+	if [ -e run_woof.conf ]; then
+		# update each line in existing file
+		while read -r LINE ; do
+			if [ "$(expr "$LINE" : '\(GTKDIALOG_COMMAND=\).*')" != "" ]; then
+				echo "$NEW_GTKDIALOG_COMMAND" >> run_woof.conf.new
+			elif [ "$(expr "$LINE" : '\(TERMINAL_COMMAND=\).*')" != "" ]; then
+				echo "$NEW_TERMINAL_COMMAND" >> run_woof.conf.new
+			elif [ "$(expr "$LINE" : '\(LAYER_TYPE=\).*')" != "" ]; then
+				echo "$NEW_LAYER_TYPE" >> run_woof.conf.new
+			elif [ "$(expr "$LINE" : '\(CHECK_FOR_UPDATES=\).*')" != "" ]; then
+				echo "$NEW_CHECK_FOR_UPDATES" >> run_woof.conf.new
+			elif [ "$(expr "$LINE" : '\(MERGE_UPDATES=\).*')" != "" ]; then
+				echo "$NEW_MERGE_UPDATES" >> run_woof.conf.new
+			elif [ "$(expr "$LINE" : '\(DELETE_TMP=\).*')" != "" ]; then
+				echo "$NEW_DELETE_TMP" >> run_woof.conf.new
+			elif [ "$(expr "$LINE" : '\(SELECTED_DEVX_PATH=\).*')" != "" ]; then
+				echo "$NEW_SELECTED_DEVX_PATH" >> run_woof.conf.new
+			else
+				echo "$LINE" >> run_woof.conf.new
+			fi
+		done < run_woof.conf
+
+		# If any variables were not set in the original config file, add them to the new config file.
+		[ "$(grep '^GTKDIALOG_COMMAND=' run_woof.conf.new)" = "" ] && echo "$NEW_GTKDIALOG_COMMAND" >> run_woof.conf.new
+		[ "$(grep '^TERMINAL_COMMAND=' run_woof.conf.new)" = "" ] && echo "$NEW_TERMINAL_COMMAND" >> run_woof.conf.new
+		[ "$(grep '^LAYER_TYPE=' run_woof.conf.new)" = "" ] && echo "$NEW_LAYER_TYPE" >> run_woof.conf.new
+		[ "$(grep '^CHECK_FOR_UPDATES=' run_woof.conf.new)" = "" ] && echo "$NEW_CHECK_FOR_UPDATES" >> run_woof.conf.new
+		[ "$(grep '^MERGE_UPDATES=' run_woof.conf.new)" = "" ] && echo "$NEW_MERGE_UPDATES" >> run_woof.conf.new
+		[ "$(grep '^DELETE_TMP=' run_woof.conf.new)" = "" ] && echo "$NEW_DELETE_TMP" >> run_woof.conf.new
+		[ "$(grep '^SELECTED_DEVX_PATH=' run_woof.conf.new)" = "" ] && echo "$NEW_SELECTED_DEVX_PATH" >> run_woof.conf.new
+
+		mv run_woof.conf.new run_woof.conf
+
+	else
+		# otherwise write new run_woof.conf
+		{
+			echo "# This is the config file for the run_woof Rox AppDir."
+			echo
+			echo "$NEW_LAYER_TYPE"
+			echo "$NEW_TERMINAL_COMMAND"
+			echo "$NEW_GTKDIALOG_COMMAND"
+			echo "$NEW_CHECK_FOR_UPDATES"
+			echo "$NEW_MERGE_UPDATES"
+			echo "$NEW_DELETE_TMP"
+			echo "$NEW_SELECTED_DEVX_PATH"
+		} > run_woof.conf
+	fi
+
+	exec ./run_woof_helper
+elif [ "$(echo "${CONFIG_RESULT}" | grep '^EXIT=')" = 'EXIT="Cancel"' ] ; then
+	exec ./run_woof_helper
+fi
